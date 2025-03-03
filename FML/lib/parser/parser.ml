@@ -56,7 +56,8 @@ let chainl1 e op =
 let rec chainr1 e op = e >>= fun a -> op >>= (fun f -> chainr1 e op >>| f a) <|> return a
 
 let parse_name =
-  skip_wspace *> take_while1 (fun c -> is_upper c || is_lower c || c = '_' || c = '\'')
+  skip_wspace
+  *> take_while1 (fun c -> is_upper c || is_lower c || is_digit c || c = '_' || c = '\'')
 ;;
 
 let parse_identifier constr =
@@ -119,6 +120,8 @@ let parse_operators =
         ; token "||" *> return "( || )"
         ; token "*" *> return "( * )"
         ; token "/" *> return "( / )"
+        ; token "~-" *> return "( ~- )"
+        ; token "~+" *> return "( ~+ )"
         ]
       <* skip_wspace)
   <* skip_wspace
@@ -264,6 +267,14 @@ let parse_expr_with_type pexpr =
   parens @@ lift2 econstraint pexpr (skip_wspace *> char ':' *> parse_type)
 ;;
 
+let parse_unop pexpr =
+  skip_wspace
+  *> (string "-" *> pexpr
+      >>| (fun expr -> EApplication (EIdentifier "( ~- )", expr))
+      <|> (string "+" *> pexpr >>| fun expr -> EApplication (EIdentifier "( ~+ )", expr))
+     )
+;;
+
 let parse_expr =
   fix
   @@ fun expr ->
@@ -283,8 +294,7 @@ let parse_expr =
       ]
   in
   let apply =
-    let rec build_application f args =
-      match args with
+    let rec build_application f = function
       | [] -> f
       | h :: t -> build_application (EApplication (f, h)) t
     in
@@ -292,6 +302,7 @@ let parse_expr =
   in
   let expr = chainl1 apply (mul <|> div) in
   let expr = chainl1 expr (add <|> sub) in
+  let expr = expr <|> parse_unop expr in
   let expr = chainr1 expr parse_cons in
   let expr = chainl1 expr (choice [ lte; lt; gte; gt; eqq; eq; neq; or_; and_ ]) in
   parse_expr_with_type expr <|> expr

@@ -4,6 +4,10 @@
  (name fml_lib)
  (public_name FML.Lib)
  (modules Ast Parser Inf_errors Inf_pprint Inferencer Typedtree Pattern_elim)
+ (modules Ast Parser Inf_errors Inf_pprint Inferencer Typedtree)
+ (modules_without_implementation inf_errors)
  (libraries base angstrom)
  (preprocess
-  (pps ppx_deriving.show)))
+  (pps ppx_deriving.show))
+ (instrumentation
+  (backend bisect_ppx)))

@@ -58,8 +58,8 @@ let%expect_test _ =
 let res = x + y;;|};
   [%expect
     {|
-    val y : int
     val x : int
+    val y : int
     val res : int |}]
 ;;
 
@@ -76,4 +76,63 @@ let%expect_test _ =
     {|
     val h : int
     val tl : int list |}]
+;;
+
+let%expect_test _ =
+  inference {| let h::tl = [1;2;3];; |};
+  [%expect
+    {|
+    val h : int
+    val tl : int list |}]
+;;
+
+let%expect_test _ =
+  inference
+    {| let rec fold_left f acc lst =
+  match lst with
+  | [] -> acc
+  | x :: xs -> fold_left f (f acc x) xs |};
+  [%expect
+    {|
+    val fold_left : ('a -> 'b -> 'a) -> 'a -> 'b list -> 'a |}]
+;;
+
+let%expect_test _ =
+  inference {| let hd :: tl = [(fun _ -> 0); (fun x -> x/2); (fun x -> x+1)] |};
+  [%expect
+    {|
+    val hd : int -> int
+    val tl : (int -> int) list |}]
+;;
+
+let%expect_test _ =
+  inference
+    {| let fold_left f acc lst =
+  match lst with
+  | [] -> acc
+  | x :: xs -> fold_left f (f acc x) xs |};
+  [%expect
+    {|
+    Type error: unbound variable 'fold_left' |}]
+;;
+
+let%expect_test _ =
+  inference {| let rec (a,b) = (5,6) |};
+  [%expect
+    {|
+    Type error: Only variables are allowed as left-hand side of `let rec' |}]
+;;
+
+let%expect_test _ =
+  inference {| let (a,a) = (5,6) |};
+  [%expect
+    {|
+    Type error: variable 'a' is bound several times |}]
+;;
+
+let%expect_test _ =
+  inference {| let (a,b) = fun _ -> 0 |};
+  [%expect
+    {|
+    Type error: unification failed - type 'a * 'b does not match expected type 'a -> int |}]
 ;;
